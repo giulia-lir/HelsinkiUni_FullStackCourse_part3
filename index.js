@@ -1,8 +1,8 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
 const Person = require('./models/person')
-require('dotenv').config()
 
 const app = express()
 app.use(cors())
@@ -21,33 +21,29 @@ app.get('/api/persons', (request, response) => {
 })
 
 app.get('/info', (request, response) => {
-  const personsLength = persons.length;
-  const currentDate = new Date();
-  
-  response.send(`
-    <p>Phonebook has info for ${personsLength} people</p>
-    <p>${currentDate}</p>
-  `);
+  Person.find({}).then(persons => {
+    const currentDate = new Date();
+    const info = `<p>Phonebook has info for ${persons.length} people</p><p>${currentDate}</p>`
+    response.send(info);
+  })
 })
 
 app.get('/api/persons/:id', (request, response) => {
-  const id = request.params.id
-  const person = persons.find(person => person.id === id)
-
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404)
-    response.send("Person does not exist in phonebook.")
-    response.end()
-  }
+  Person.findById(request.params.id).then(person => {
+    if (person) {
+      response.json(person)
+    } else {
+      response.status(404)
+      response.send("Person does not exist in phonebook.")
+      response.end()
+    }
+  })
 })
 
 app.delete('/api/persons/:id', (request, response) => {
-  const id = request.params.id
-  persons = persons.filter(person => person.id !== id)
-
-  response.status(204).end() //Response OK even if resource does not exist
+  Person.findByIdAndDelete(request.params.id).then(() => {
+    response.status(204).end() //Response OK even if resource does not exist
+  })
 })
 
 app.post('/api/persons', (request, response) => {
@@ -65,26 +61,21 @@ app.post('/api/persons', (request, response) => {
     })
   }
 
-  if (persons.find(person => person.name === body.name)) {
-    return response.status(400).json({ 
-      error: 'name must be unique' 
-    })
-  }
-
   if (!body.number) {
     return response.status(400).json({ 
       error: 'number is missing' 
     })
   }
 
-  const person = {
+  const person = new Person({
     name: body.name,
     number: body.number,
-  }
+  })
 
-  persons = persons.concat(person)
-
-  response.json(person)
+  person.save()
+    .then(() => {
+      response.json(person)
+    })
 })
 
 app.use(unknownEndpoint)
