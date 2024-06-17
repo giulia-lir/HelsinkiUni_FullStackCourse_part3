@@ -6,15 +6,11 @@ const Person = require('./models/person')
 
 const app = express()
 app.use(cors())
-app.use(express.json())
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :postToString'))
 app.use(express.static('dist'))
+app.use(express.json())
 
 morgan.token('postToString', (req) => { return (req.method === 'POST') ? JSON.stringify(req.body) : "" })
-
-const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: 'unknown endpoint' })
-}
 
 app.get('/api/persons', (request, response) => {
   Person.find({}).then(persons => response.json(persons))
@@ -38,17 +34,19 @@ app.get('/api/persons/:id', (request, response) => {
       response.end()
     }
   })
+  .catch(error => next(error))
 })
 
 app.delete('/api/persons/:id', (request, response) => {
   Person.findByIdAndDelete(request.params.id).then(() => {
     response.status(204).end() //Response OK even if resource does not exist
   })
+  .catch(error => next(error))
 })
 
 app.post('/api/persons', (request, response) => {
   const body = request.body
-
+  
   if (!body.name) {
     return response.status(400).json({ 
       error: 'name is missing' 
@@ -65,14 +63,30 @@ app.post('/api/persons', (request, response) => {
     name: body.name,
     number: body.number,
   })
-
+  
   person.save()
-    .then(() => {
-      response.json(person)
-    })
+  .then(() => {
+    response.json(person)
+  })
 })
 
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
 app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } 
+
+  next(error)
+}
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
