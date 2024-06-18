@@ -24,22 +24,22 @@ const personSchema = new mongoose.Schema({
 const Person = mongoose.model('Person', personSchema)
 
 const person = new Person({
-  name: personName, 
+  name: personName,
   number: personNumber
 })
 
 const addPerson = () => {
-  person.save().then(result => {
+  person.save().then(() => {
     console.log(`added ${personName} number ${personNumber} to phonebook`)
     mongoose.connection.close()
   })
 }
 
 const listAll = () => {
-  console.log("phonebook: ")
+  console.log('phonebook: ')
   Person.find({}).then(result => {
     result.forEach(person => {
-        console.log(person.name, person.number)
+      console.log(person.name, person.number)
     })
     mongoose.connection.close()
   })
